@@ -1,0 +1,16 @@
+name: dlplayers
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.10
+  - pandas=2.2.2
+  - numpy=1.24.4
+  - scikit-learn=1.3.2
+  - openpyxl=3.1.2
+  - joblib=1.3.2
+  - matplotlib=3.7.3
+  - pip
+  - pip:
+      - tensorflow==2.14.0
+      - shap==0.44.1
