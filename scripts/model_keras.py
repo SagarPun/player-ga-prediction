@@ -1,20 +1,15 @@
 import os
 import pandas as pd
-import numpy as np
 from sklearn.metrics import mean_absolute_error
-import tensorflow as tf
 from tensorflow.keras import layers, Model
 from tensorflow.keras.optimizers import Adam
-# No need to import load_model here as it's not used for saving
 from tensorflow.keras.callbacks import EarlyStopping, ReduceLROnPlateau
 
-# Define a custom Keras Model by subclassing tf.keras.Model
 class CustomMLP(Model):
     def __init__(self, input_dim, layer_configs, output_units):
         super(CustomMLP, self).__init__()
         self.hidden_layers = []
         for i, config in enumerate(layer_configs):
-            # Dynamically create layers based on config
             self.hidden_layers.append(layers.Dense(config['units'], name=f'dense_{i+1}'))
             self.hidden_layers.append(layers.BatchNormalization(name=f'bn_{i+1}'))
             self.hidden_layers.append(layers.Activation(config['activation'], name=f'activation_{i+1}'))
@@ -25,7 +20,6 @@ class CustomMLP(Model):
     def call(self, inputs, training=False):
         x = inputs
         for layer in self.hidden_layers:
-            # Pass training flag for BatchNormalization and Dropout
             if isinstance(layer, (layers.BatchNormalization, layers.Dropout)):
                 x = layer(x, training=training)
             else:
@@ -41,14 +35,12 @@ def train_and_evaluate_keras(X_train, y_train, X_test, y_test, player_names_test
 
     input_dim = X_train.shape[1]
 
-    # Instantiate our custom model with parameters from config
     model = CustomMLP(
         input_dim=input_dim,
         layer_configs=model_config['layers'],
         output_units=model_config['output_units']
     )
 
-    # Configure optimizer and loss from config
     optimizer = Adam(learning_rate=model_config['learning_rate'])
     model.compile(optimizer=optimizer, loss=model_config['loss'])
 
@@ -70,9 +62,8 @@ def train_and_evaluate_keras(X_train, y_train, X_test, y_test, player_names_test
             min_lr=lrp_config['min_lr']
         ))
 
-    # Build the model by calling it on dummy input to create weights
     model.build(input_shape=(None, input_dim))
-    model.summary() # Print model summary to verify structure
+    model.summary()
 
     model.fit(
         X_train, y_train,
@@ -83,13 +74,11 @@ def train_and_evaluate_keras(X_train, y_train, X_test, y_test, player_names_test
         verbose=1
     )
 
-    # Predict
     y_pred = model.predict(X_test).flatten()
     mae = mean_absolute_error(y_test, y_pred)
     print(f"Keras Model MAE (on 24/25 set): {mae:.2f}")
 
     os.makedirs(os.path.dirname(train_config['model_save_path']), exist_ok=True)
-    # FIX: Change saving format for subclassed models to TensorFlow SavedModel format
     model.save(train_config['model_save_path'], save_format="tf")
     print(f"Model saved to {train_config['model_save_path']} in TensorFlow SavedModel format.")
 
@@ -107,3 +96,5 @@ def train_and_evaluate_keras(X_train, y_train, X_test, y_test, player_names_test
 
     df_out.to_csv(train_config['predictions_save_path'], index=False)
     print(f"Predictions saved to {train_config['predictions_save_path']}")
+
+    return y_pred

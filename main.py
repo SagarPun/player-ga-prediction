@@ -1,10 +1,15 @@
 import pandas as pd
 import os
-from config import data_config, model_config, train_config, shap_config
+from config import data_config, model_config_keras, train_config_keras, \
+                   model_config_sklearn_mlp, train_config_sklearn_mlp, \
+                   shap_config_keras, shap_config_sklearn, visualization_config, project_config
 
 from scripts.preprocess import preprocess_data
 from scripts.model_keras import train_and_evaluate_keras
-from scripts.shap_explainer import explain_model_with_shap, explain_single_player
+from scripts.model import train_and_evaluate as train_and_evaluate_sklearn
+from scripts.shap_explainer import explain_model_with_shap
+from scripts.visualize import plot_actual_vs_predicted, plot_residuals_distribution, \
+                              plot_residuals_vs_predicted, plot_feature_correlation_heatmap
 
 
 def load_raw_data(data_cfg):
@@ -32,26 +37,53 @@ def main():
     print(f"X_test shape: {X_test.shape}")
     print(f"y_test shape: {y_test.shape}")
 
-    train_and_evaluate_keras(
-        X_train, y_train, X_test, y_test,
-        player_names_test=player_names_test,
-        model_config=model_config,
-        train_config=train_config
-    )
+    selected_model = project_config["selected_model"]
 
-    # explain_model_with_shap(
-    #     X_test, X_test.columns.tolist(),
-    #     model_path=shap_config['model_path'],
-    #     sample_size=shap_config['sample_size_model_explanation'],
-    #     summary_plot_path=shap_config['summary_plot_path']
-    # )
-    explain_single_player(
-        X_test,
-        model_path=shap_config['model_path'],
-        player_index=shap_config['single_player_index'],
-        player_plot_path_prefix=shap_config['player_plot_path_prefix'],
-        player_csv_path_prefix=shap_config['player_csv_path_prefix']
-    )
+    if selected_model == "keras":
+        print("\n--- Running Keras Deep Learning Model ---")
+        y_pred_keras = train_and_evaluate_keras(
+            X_train, y_train, X_test, y_test,
+            player_names_test=player_names_test,
+            model_config=model_config_keras,
+            train_config=train_config_keras
+        )
+        print("\n--- Running SHAP Explanations for Keras Model ---")
+        explain_model_with_shap(
+            X_test, X_test.columns.tolist(),
+            model_path=shap_config_keras['model_path'],
+            sample_size_explainer_background=shap_config_keras['sample_size_explainer_background'],
+            num_players_for_summary_explanation=shap_config_keras['num_players_for_summary_explanation'],
+            summary_plot_path=shap_config_keras['summary_plot_path'],
+            model_type="keras"
+        )
+        print("\n--- Generating Performance Visualizations for Keras Model ---")
+        plot_actual_vs_predicted(y_test, y_pred_keras, visualization_config['actual_vs_predicted_keras_path'])
+        plot_residuals_distribution(y_test, y_pred_keras, visualization_config['residuals_distribution_keras_path'])
+        plot_residuals_vs_predicted(y_test, y_pred_keras, visualization_config['residuals_vs_predicted_keras_path'])
+    elif selected_model == "sklearn":
+        print("\n--- Running Scikit-learn MLP Regressor ---")
+        y_pred_sklearn = train_and_evaluate_sklearn(
+            X_train, y_train, X_test, y_test,
+            player_names_test=player_names_test,
+            model_config=model_config_sklearn_mlp,
+            train_config=train_config_sklearn_mlp
+        )
+        print("\n--- Running SHAP Explanations for Scikit-learn Model ---")
+        explain_model_with_shap(
+            X_test, X_test.columns.tolist(),
+            model_path=shap_config_sklearn['model_path'],
+            sample_size_explainer_background=shap_config_sklearn['sample_size_explainer_background'],
+            num_players_for_summary_explanation=shap_config_sklearn['num_players_for_summary_explanation'],
+            summary_plot_path=shap_config_sklearn['summary_plot_path'],
+            model_type="sklearn"
+        )
+        print("\n--- Generating Performance Visualizations for Scikit-learn Model ---")
+        plot_actual_vs_predicted(y_test, y_pred_sklearn, visualization_config['actual_vs_predicted_sklearn_path'])
+        plot_residuals_distribution(y_test, y_pred_sklearn, visualization_config['residuals_distribution_sklearn_path'])
+        plot_residuals_vs_predicted(y_test, y_pred_sklearn, visualization_config['residuals_vs_predicted_sklearn_path'])
+
+    print("\n--- Generating Common Visualizations ---")
+    plot_feature_correlation_heatmap(X_train, y_train, visualization_config['feature_correlation_heatmap_path'])
 
 
 if __name__ == "__main__":
